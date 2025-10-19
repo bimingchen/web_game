@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>坦克大战</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			margin: 0;
+			padding: 0;
+			display: flex;
+			flex-direction: column;
+			height: 100vh;
+			background-image: url('tank-battle.png');
+			background-size: cover;
+			background-position: center;
+			position: relative;
+		}
+		.navbar {
+			background-color: rgba(51, 51, 51, 0.7);
+			overflow: hidden;
+			width: 100%;
+			transition: top 0.3s ease-in-out;
+			position: fixed;
+			top: -60px;
+			z-index: 1000;
+		}
+		.navbar.show {
+			top: 0;
+		}
+		.navbar a {
+			float: left;
+			display: block;
+			color: white;
+			text-align: center;
+			padding: 14px 20px;
+			text-decoration: none;
+		}
+		.navbar a:hover {
+			background-color: #ddd;
+			color: black;
+		}
+		.container {
+			flex: 1;
+			display: flex;
+			gap: 20px;
+			align-items: stretch;
+			justify-content: center;
+			padding: 100px 20px 70px;
+			box-sizing: border-box;
+		}
+		.panel {
+			background: rgba(0, 0, 0, 0.5);
+			border-radius: 10px;
+			color: #fff;
+			padding: 16px;
+			backdrop-filter: blur(2px);
+		}
+		.sidebar {
+			width: 280px;
+			display: flex;
+			flex-direction: column;
+			gap: 12px;
+		}
+		.title {
+			margin: 0 0 8px;
+			font-size: 24px;
+		}
+		.row {
+			display: flex;
+			gap: 10px;
+			flex-wrap: wrap;
+		}
+		.button {
+			cursor: pointer;
+			background: rgba(255, 255, 255, 0.1);
+			border: 1px solid rgba(255, 255, 255, 0.25);
+			color: #fff;
+			padding: 10px 14px;
+			border-radius: 8px;
+			transition: all 0.2s ease;
+		}
+		.button:hover {
+			background: rgba(255, 255, 255, 0.2);
+			transform: translateY(-1px);
+		}
+		.kbd {
+			display: inline-block;
+			padding: 2px 6px;
+			margin: 0 2px;
+			background: rgba(255,255,255,0.15);
+			border: 1px solid rgba(255,255,255,0.25);
+			border-radius: 4px;
+			font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+			font-size: 12px;
+		}
+		.canvas-wrap {
+			position: relative;
+		}
+		canvas {
+			background: rgba(0,0,0,0.6);
+			border: 1px solid rgba(255,255,255,0.2);
+			border-radius: 10px;
+		}
+		.gameover {
+			position: absolute;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			display: none;
+			align-items: center;
+			justify-content: center;
+			background: rgba(0,0,0,0.45);
+			color: #fff;
+			font-size: 48px;
+			border-radius: 10px;
+		}
+		footer {
+			background-color: rgba(51, 51, 51, 0.7);
+			color: white;
+			text-align: center;
+			padding: 10px 0;
+			width: 100%;
+			position: fixed;
+			bottom: 0;
+			z-index: 1000;
+			height: 50px;
+		}
+	</style>
+</head>
+<body>
+
+<div class="navbar" id="navbar">
+	<a href="index.html">首页</a>
+	<a href="game.html">返回游戏中心</a>
+</div>
+
+<div class="container">
+	<div class="panel sidebar">
+		<h2 class="title">坦克大战</h2>
+		<div>按 <span class="kbd">W</span><span class="kbd">A</span><span class="kbd">S</span><span class="kbd">D</span> 移动，鼠标控制炮台，左键发射</div>
+		<div class="row">
+			<button id="startBtn" class="button">开始游戏</button>
+			<button id="pauseBtn" class="button">暂停</button>
+			<button id="resetBtn" class="button">重开</button>
+		</div>
+		<div>分数：<span id="score">0</span></div>
+		<!-- 移动端操作区 -->
+		<div id="mobileControls" style="display:none; gap:12px; margin-top:8px;">
+			<div style="display:flex; align-items:center; gap:12px;">
+				<div id="joystick" style="touch-action:none; width:120px; height:120px; border-radius:60px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); position:relative;">
+					<div id="stick" style="position:absolute; left:50%; top:50%; width:48px; height:48px; margin-left:-24px; margin-top:-24px; border-radius:24px; background:rgba(255,255,255,0.25);"></div>
+				</div>
+				<div style="display:flex; flex-direction:column; gap:10px;">
+					<button id="fireBtn" class="button" style="min-width:96px;">开火</button>
+					<button id="mobileStartBtn" class="button" style="min-width:96px;">开始/暂停</button>
+				</div>
+			</div>
+			<div style="font-size:12px; opacity:0.8">提示：拖动左侧圆盘移动，触碰画布瞄准，按“开火”射击</div>
+		</div>
+	</div>
+	<div class="panel canvas-wrap">
+		<canvas id="gameCanvas" width="840" height="600"></canvas>
+		<div id="gameOverLayer" class="gameover">GAME OVER</div>
+	</div>
+</div>
+
+<footer>
+	<p>&copy; 2025 坦克大战</p>
+</footer>
+
+<script>
+	// 显示/隐藏顶部导航
+	document.addEventListener('mousemove', function(event) {
+		var navbar = document.getElementById('navbar');
+		if (event.clientY < 60) {
+			navbar.classList.add('show');
+		} else {
+			navbar.classList.remove('show');
+		}
+	});
+
+	// 坦克大战（街机风格渲染 + 敌方开火 + 随机障碍）
+	var canvas = document.getElementById('gameCanvas');
+	var ctx = canvas.getContext('2d');
+	var running = false;
+	var score = 0;
+	var keys = {};
+	var bullets = []; // 玩家子弹
+	var enemyBullets = []; // 敌方子弹
+	var enemies = [];
+	var obstacles = [];
+	var isGameOver = false;
+
+	var player = {
+		x: 80,
+		y: 80,
+		w: 40,
+		h: 40,
+		speed: 2.4,
+		color: '#56d364',
+		bodyDir: { x: 1, y: 0 },
+		turretAngle: 0,
+		alive: true
+	};
+
+	var mouse = { x: 0, y: 0 };
+
+	function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+	function generateObstacles(count) {
+		obstacles = [];
+		for (var i = 0; i < count; i++) {
+			var w = randomInt(40, 80);
+			var h = randomInt(40, 80);
+			var x = randomInt(0, canvas.width - w);
+			var y = randomInt(0, canvas.height - h);
+			// 尽量避免出生点
+			if (Math.abs(x - player.x) < 120 && Math.abs(y - player.y) < 120) { i--; continue; }
+			obstacles.push({ x: x, y: y, w: w, h: h, color: '#6e7681' });
+		}
+	}
+
+	function spawnEnemy() {
+		var size = 36;
+		var side = Math.floor(Math.random() * 4);
+		var ex = 0, ey = 0;
+		if (side === 0) { ex = 0; ey = Math.random() * (canvas.height - size); }
+		if (side === 1) { ex = canvas.width - size; ey = Math.random() * (canvas.height - size); }
+		if (side === 2) { ex = Math.random() * (canvas.width - size); ey = 0; }
+		if (side === 3) { ex = Math.random() * (canvas.width - size); ey = canvas.height - size; }
+		enemies.push({ x: ex, y: ey, w: size, h: size, color: '#ff7b72', hp: 1, dir: { x: 1, y: 0 } });
+	}
+
+	function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+	function rectsOverlap(a, b) {
+		return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+	}
+
+	function moveWithCollision(entity, dx, dy) {
+		// 分轴碰撞，避免穿透障碍
+		entity.x += dx;
+		for (var i = 0; i < obstacles.length; i++) {
+			if (rectsOverlap(entity, obstacles[i])) {
+				if (dx > 0) entity.x = obstacles[i].x - entity.w; else entity.x = obstacles[i].x + obstacles[i].w;
+			}
+		}
+		entity.y += dy;
+		for (var j = 0; j < obstacles.length; j++) {
+			if (rectsOverlap(entity, obstacles[j])) {
+				if (dy > 0) entity.y = obstacles[j].y - entity.h; else entity.y = obstacles[j].y + obstacles[j].h;
+			}
+		}
+		entity.x = clamp(entity.x, 0, canvas.width - entity.w);
+		entity.y = clamp(entity.y, 0, canvas.height - entity.h);
+	}
+
+	function update(dt) {
+		var vx = 0, vy = 0;
+		if (keys['KeyW']) vy -= 1;
+		if (keys['KeyS']) vy += 1;
+		if (keys['KeyA']) vx -= 1;
+		if (keys['KeyD']) vx += 1;
+		if (vx !== 0 || vy !== 0) {
+			var len = Math.hypot(vx, vy);
+			var mvx = vx / len;
+			var mvy = vy / len;
+			moveWithCollision(player, mvx * player.speed * dt, mvy * player.speed * dt);
+			// 车体朝向：按主轴对齐，W/S 向上/下，A/D 向左/右
+			if (Math.abs(vy) >= Math.abs(vx)) {
+				player.bodyDir = { x: 0, y: vy > 0 ? 1 : -1 };
+			} else {
+				player.bodyDir = { x: vx > 0 ? 1 : -1, y: 0 };
+			}
+		}
+
+
+		bullets.forEach(function(b) {
+			b.x += b.vx * dt;
+			b.y += b.vy * dt;
+		});
+		bullets = bullets.filter(function(b) {
+			// 与障碍碰撞则移除
+			for (var i = 0; i < obstacles.length; i++) {
+				if (rectsOverlap({ x: b.x, y: b.y, w: b.w, h: b.h }, obstacles[i])) return false;
+			}
+			return b.x > -10 && b.x < canvas.width + 10 && b.y > -10 && b.y < canvas.height + 10;
+		});
+
+		// 敌方子弹更新
+		enemyBullets.forEach(function(b) {
+			b.x += b.vx * dt;
+			b.y += b.vy * dt;
+		});
+		enemyBullets = enemyBullets.filter(function(b) {
+			for (var i = 0; i < obstacles.length; i++) {
+				if (rectsOverlap({ x: b.x, y: b.y, w: b.w, h: b.h }, obstacles[i])) return false;
+			}
+			return b.x > -10 && b.x < canvas.width + 10 && b.y > -10 && b.y < canvas.height + 10;
+		});
+
+		enemies.forEach(function(e) {
+			var dx = player.x - e.x;
+			var dy = player.y - e.y;
+			var len = Math.hypot(dx, dy) || 1;
+			var mvx = (dx / len) * 0.6 * dt;
+			var mvy = (dy / len) * 0.6 * dt;
+			moveWithCollision(e, mvx, mvy);
+			if (mvx !== 0 || mvy !== 0) {
+				// 更新敌方朝向（用于旋转车体与炮管）
+				var dlen = Math.hypot(mvx, mvy) || 1;
+				e.dir = { x: mvx / dlen, y: mvy / dlen };
+			}
+			// 敌人随机开火
+			if (Math.random() < 0.01) {
+				var sp = 3.6;
+				var evx = (dx / len) * sp;
+				var evy = (dy / len) * sp;
+				enemyBullets.push({ x: e.x + e.w/2, y: e.y + e.h/2, vx: evx, vy: evy, w: 6, h: 6 });
+			}
+		});
+
+		for (var i = enemies.length - 1; i >= 0; i--) {
+			for (var j = bullets.length - 1; j >= 0; j--) {
+				if (rectsOverlap(enemies[i], bullets[j])) {
+					enemies.splice(i, 1);
+					bullets.splice(j, 1);
+					score += 10;
+					break;
+				}
+			}
+		}
+
+		// 玩家被命中检测
+		for (var k = enemyBullets.length - 1; k >= 0; k--) {
+			if (rectsOverlap(player, enemyBullets[k])) {
+				player.alive = false;
+				running = false;
+				isGameOver = true;
+				document.getElementById('gameOverLayer').style.display = 'flex';
+				break;
+			}
+		}
+	}
+
+	function draw() {
+		ctx.clearRect(0, 0, canvas.width, canvas.height);
+		ctx.fillStyle = '#30363d';
+		for (var i = 0; i < canvas.width; i += 60) {
+			for (var j = 0; j < canvas.height; j += 60) {
+				ctx.fillRect(i + 2, j + 2, 56, 56);
+			}
+		}
+		// 绘制障碍
+		obstacles.forEach(function(o) {
+			ctx.fillStyle = o.color;
+			ctx.fillRect(o.x, o.y, o.w, o.h);
+			ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+			ctx.strokeRect(o.x + 0.5, o.y + 0.5, o.w - 1, o.h - 1);
+		});
+
+		// 绘制玩家（街机风格，车体与炮台分离）
+		drawArcadeTank(player.x, player.y, player.w, player.h, player.bodyDir, player.turretAngle, '#56d364', '#1f6feb');
+		ctx.fillStyle = '#79c0ff';
+		bullets.forEach(function(b) { ctx.fillRect(b.x, b.y, 6, 6); });
+		ctx.fillStyle = '#ff7b72';
+		enemies.forEach(function(e) {
+			var px = player.x + player.w/2, py = player.y + player.h/2;
+			var ex = e.x + e.w/2, ey = e.y + e.h/2;
+			var tAngle = Math.atan2(py - ey, px - ex);
+			drawArcadeTank(e.x, e.y, e.w, e.h, e.dir || { x: 1, y: 0 }, tAngle, '#ff7b72', '#f78166');
+		});
+		// 敌方子弹
+		ctx.fillStyle = '#ffd700';
+		enemyBullets.forEach(function(b) { ctx.fillRect(b.x, b.y, 6, 6); });
+	}
+
+	function drawArcadeTank(x, y, w, h, bodyDir, turretAngle, bodyColor, detailColor) {
+		// 车体
+		var bodyAngle = Math.atan2(bodyDir.y || 0, bodyDir.x || 1);
+		ctx.save();
+		ctx.translate(x + w/2, y + h/2);
+		ctx.rotate(bodyAngle);
+		ctx.fillStyle = bodyColor;
+		ctx.fillRect(-w/2, -h/2, w, h);
+		ctx.fillStyle = 'rgba(0,0,0,0.45)';
+		ctx.fillRect(-w/2, -h/2, w, h * 0.25);
+		ctx.fillRect(-w/2, h/2 - h * 0.25, w, h * 0.25);
+		ctx.restore();
+		// 炮塔与炮管
+		ctx.save();
+		ctx.translate(x + w/2, y + h/2);
+		ctx.rotate(turretAngle);
+		ctx.fillStyle = detailColor;
+		ctx.beginPath();
+		ctx.arc(0, 0, Math.min(w, h) * 0.22, 0, Math.PI * 2);
+		ctx.fill();
+		ctx.fillStyle = '#c9d1d9';
+		ctx.fillRect(0, -3, Math.max(w, h) * 0.8, 6);
+		ctx.restore();
+	}
+
+	var lastTime = 0;
+	var enemyTimer = 0;
+	var enemyShootTimer = 0;
+	function loop(ts) {
+		if (!running) return;
+		var dt = (ts - lastTime) * 0.1; // 放慢速度
+		lastTime = ts;
+		enemyTimer += dt;
+		if (enemyTimer > 200) {
+			if (enemies.length < 3) spawnEnemy();
+			enemyTimer = 0;
+		}
+		update(dt);
+		draw();
+		requestAnimationFrame(loop);
+	}
+
+	function shoot() {
+		if (!running || !player.alive) return;
+		var speed = 4.2;
+		var vx = Math.cos(player.turretAngle);
+		var vy = Math.sin(player.turretAngle);
+		bullets.push({ x: player.x + player.w/2, y: player.y + player.h/2, vx: vx * speed, vy: vy * speed, w: 6, h: 6 });
+	}
+
+	document.addEventListener('keydown', function(e) {
+		keys[e.code] = true;
+	});
+	document.addEventListener('keyup', function(e) { keys[e.code] = false; });
+
+	// 鼠标控制炮台与射击
+	canvas.addEventListener('mousemove', function(e) {
+		var rect = canvas.getBoundingClientRect();
+		mouse.x = e.clientX - rect.left;
+		mouse.y = e.clientY - rect.top;
+		var cx = player.x + player.w/2;
+		var cy = player.y + player.h/2;
+		player.turretAngle = Math.atan2(mouse.y - cy, mouse.x - cx);
+	});
+	canvas.addEventListener('mousedown', function(e) {
+		if (e.button === 0) shoot();
+	});
+
+	// 触摸瞄准与射击（短按开火，长按连续）
+	(function(){
+		var firingTouch = false;
+		var fireTimer = 0;
+		function aimFromTouch(t){
+			var rect = canvas.getBoundingClientRect();
+			var tx = t.clientX - rect.left;
+			var ty = t.clientY - rect.top;
+			var cx = player.x + player.w/2;
+			var cy = player.y + player.h/2;
+			player.turretAngle = Math.atan2(ty - cy, tx - cx);
+		}
+		canvas.addEventListener('touchstart', function(e){
+			if (e.touches.length > 0) {
+				aimFromTouch(e.touches[0]);
+				shoot();
+				firingTouch = true;
+				fireTimer = setInterval(shoot, 220);
+			}
+			e.preventDefault();
+		}, { passive: false });
+		canvas.addEventListener('touchmove', function(e){
+			if (e.touches.length > 0) aimFromTouch(e.touches[0]);
+			e.preventDefault();
+		}, { passive: false });
+		canvas.addEventListener('touchend', function(){
+			firingTouch = false;
+			if (fireTimer) { clearInterval(fireTimer); fireTimer = 0; }
+		});
+	})();
+
+	var startBtn = document.getElementById('startBtn');
+	var pauseBtn = document.getElementById('pauseBtn');
+	var resetBtn = document.getElementById('resetBtn');
+	var scoreEl = document.getElementById('score');
+	var mobileControls = document.getElementById('mobileControls');
+	var mobileStartBtn = document.getElementById('mobileStartBtn');
+	var fireBtn = document.getElementById('fireBtn');
+	var joystick = document.getElementById('joystick');
+	var stick = document.getElementById('stick');
+
+	function startGame() {
+		if (!running) {
+			running = true;
+			lastTime = performance.now();
+			requestAnimationFrame(loop);
+		}
+	}
+
+	function pauseGame() { running = false; }
+
+	function resetGame() {
+		running = false;
+		score = 0;
+		player.x = 80; player.y = 80; player.bodyDir = { x: 1, y: 0 }; player.turretAngle = 0; player.alive = true;
+		bullets = [];
+		enemyBullets = [];
+		enemies = [];
+		generateObstacles(8);
+		isGameOver = false;
+		document.getElementById('gameOverLayer').style.display = 'none';
+		draw();
+	}
+
+	setInterval(function() { scoreEl.textContent = String(score); }, 200);
+
+	startBtn.addEventListener('click', function() {
+		if (isGameOver) resetGame();
+		startGame();
+	});
+	pauseBtn.addEventListener('click', pauseGame);
+	resetBtn.addEventListener('click', resetGame);
+
+	// 初始化
+	generateObstacles(8);
+	draw();
+
+	// 响应式：小屏幕显示移动控件，适配画布尺寸
+	function isSmallScreen(){ return window.innerWidth <= 900; }
+	function resizeForMobile(){
+		if (isSmallScreen()) {
+			mobileControls.style.display = 'block';
+			// 缩放画布以适配屏幕宽度
+			var maxW = Math.min(window.innerWidth - 24, 840);
+			var ratio = maxW / canvas.width;
+			canvas.style.width = maxW + 'px';
+			canvas.style.height = (canvas.height * ratio) + 'px';
+		} else {
+			mobileControls.style.display = 'none';
+			canvas.style.width = '';
+			canvas.style.height = '';
+		}
+	}
+	window.addEventListener('resize', resizeForMobile);
+	resizeForMobile();
+
+	// 虚拟摇杆：控制 WASD 移动向量
+	(function(){
+		if (!joystick) return;
+		var center = { x: 60, y: 60 };
+		var active = false;
+		var lastVec = { x: 0, y: 0 };
+		function setKeysFromVec(vx, vy){
+			keys['KeyW'] = vy < -0.25;
+			keys['KeyS'] = vy > 0.25;
+			keys['KeyA'] = vx < -0.25;
+			keys['KeyD'] = vx > 0.25;
+		}
+		function handle(e){
+			var rect = joystick.getBoundingClientRect();
+			var x = (e.clientX || e.touches[0].clientX) - rect.left;
+			var y = (e.clientY || e.touches[0].clientY) - rect.top;
+			var dx = x - center.x;
+			var dy = y - center.y;
+			var len = Math.hypot(dx, dy);
+			var maxR = 44; // 限制小摇杆移动半径
+			if (len > maxR) { dx = dx / len * maxR; dy = dy / len * maxR; }
+			stick.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+			var vx = dx / maxR; var vy = dy / maxR;
+			lastVec = { x: vx, y: vy };
+			setKeysFromVec(vx, vy);
+		}
+		joystick.addEventListener('touchstart', function(e){ active = true; handle(e); e.preventDefault(); }, { passive: false });
+		joystick.addEventListener('touchmove', function(e){ if (active) handle(e); e.preventDefault(); }, { passive: false });
+		joystick.addEventListener('touchend', function(){ active = false; stick.style.transform = 'translate(0px,0px)'; lastVec = { x:0, y:0 }; setKeysFromVec(0,0); });
+		joystick.addEventListener('mousedown', function(e){ active = true; handle(e); });
+		window.addEventListener('mousemove', function(e){ if (active) handle(e); });
+		window.addEventListener('mouseup', function(){ active = false; stick.style.transform = 'translate(0px,0px)'; lastVec = { x:0, y:0 }; setKeysFromVec(0,0); });
+	})();
+
+	// 移动端按钮：开火、开始/暂停
+	if (fireBtn) {
+		var holdTimer = 0;
+		fireBtn.addEventListener('touchstart', function(e){ shoot(); holdTimer = setInterval(shoot, 220); e.preventDefault(); }, { passive:false });
+		fireBtn.addEventListener('touchend', function(){ if (holdTimer) { clearInterval(holdTimer); holdTimer = 0; } });
+		fireBtn.addEventListener('click', shoot);
+	}
+	if (mobileStartBtn) {
+		mobileStartBtn.addEventListener('click', function(){ running ? pauseGame() : startGame(); });
+		mobileStartBtn.addEventListener('touchstart', function(e){ running ? pauseGame() : startGame(); e.preventDefault(); }, { passive:false });
+	}
+</script>
+
+</body>
+</html>
+
+

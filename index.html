@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简单网页项目</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-image: url('zhuye.jpg'); /* 设置背景图像 */
+            background-size: cover; /* 背景图片覆盖整个元素 */
+            background-position: center; /* 背景图片居中显示 */
+            position: relative;
+        }
+        .navbar {
+            background-color: rgba(51, 51, 51, 0.7); /* 半透明背景色 */
+            overflow: hidden;
+            width: 100%;
+            transition: top 0.3s ease-in-out;
+            position: fixed;
+            top: -60px; /* 初始位置在屏幕外 */
+            z-index: 1000; /* 确保导航栏在最上层 */
+        }
+        .navbar.show {
+            top: 0; /* 显示时的位置 */
+        }
+        .navbar a {
+            float: left;
+            display: block;
+            color: rgb(255, 255, 255);
+            text-align: center;
+            padding: 14px 20px;
+            text-decoration: none;
+        }
+        .navbar a:hover {
+            background-color: #ddd;
+            color: black;
+        }
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: rgba(51, 51, 51, 0.9);
+            width: 200px; /* 固定宽度 */
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+            top: 100%; /* 定位在父元素下方 */
+            left: 0;
+            padding: 10px 0; /* 增加上下内边距 */
+        }
+        .dropdown-content a {
+            display: block;
+            width: 100%;
+            padding: 12px 20px; /* 增加内边距 */
+            margin: 0;
+            clear: both;
+            text-align: left;
+            white-space: nowrap; /* 防止文字换行 */
+        }
+        .dropdown-content a {
+            color: white;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            text-align: left;
+        }
+        .dropdown-content a:hover {
+            background-color: #ddd;
+            color: black;
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+        .main-content {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+            margin-top: 60px; /* 确保内容不被初始隐藏的导航栏遮挡 */
+            margin-bottom: 50px; /* 确保内容不被页脚遮挡 */
+            overflow: hidden; /* 防止背景图片溢出 */
+        }
+        .content-text {
+            text-align: center; /* 文本居中对齐 */
+        }
+        h1 {
+            margin-bottom: 10px;
+            color: white;
+            font-size: 3em; /* 放大标题 */
+        }
+        h3 {
+            margin-top: 5px;
+            color: white;
+            font-size: 1.5em; /* 放大副标题 */
+        }
+        section {
+            display: none;
+            text-align: center;
+            color: white;
+            padding: 20px;
+        }
+        section.active {
+            display: block;
+        }
+        footer {
+            background-color: rgba(51, 51, 51, 0.7); /* 半透明背景色 */
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            width: 100%;
+            position: fixed;
+            bottom: 0;
+            z-index: 1000; /* 确保页脚在最上层 */
+            height: 50px; /* 设置页脚高度 */
+        }
+    </style>
+</head>
+<body>
+
+<div class="navbar" id="navbar">
+    <a href="#" onclick="showSection('home')">首页</a>
+    <a href="game.html" onclick="preventDefault()">游戏</a>
+    <a href="#" onclick="showSection('about')">关于我们</a>
+    <a href="#" onclick="showSection('services')">服务</a>
+    <a href="#" onclick="showSection('contact')">联系我们</a>
+</div>
+
+<div class="main-content">
+     <section id="home">
+        <h1>Web Game</h1>
+        <h3>网页游戏<h3>
+    </section>
+    <section id="about">
+        <h1>关于我们</h1>
+        <p>我们是一个致力于汇总高质量网页游戏的组织。
+           你可以在这里找到我们组织认为高质量的游戏。
+           <br>
+           （虽然目前只有我一个人awa）
+        </p>
+    </section>
+    <section id="game">
+
+        
+    </section>
+    <section id="services">
+        <h1>我们的服务</h1>
+        <p>我们提供各种类型的游戏的网址与开发。<br>（虽然开发不出什么太好的awa）</p>
+    </section>
+    <section id="contact">
+        <h1>联系我们</h1>
+        <p>如果您有任何问题，请通过电子邮件联系我们：13463353888@163.com</p>
+    </section>
+</div>
+
+<footer>
+    <p>&copy; 2023 简单网页项目. 版权所有.</p>
+</footer>
+
+<script>
+    // 监听鼠标移动事件，控制导航栏的显示和隐藏
+    document.addEventListener('mousemove', function(event) {
+        // 获取导航栏元素
+        var navbar = document.getElementById('navbar');
+        // 当鼠标指针靠近页面顶部时（Y坐标小于60像素）
+        if (event.clientY < 60) {
+            // 添加'show'类，显示导航栏
+            navbar.classList.add('show');
+        } else {
+            // 移除'show'类，隐藏导航栏
+            navbar.classList.remove('show');
+        }
+    });
+
+    
+    // 显示指定ID的内容区域的函数
+    function showSection(sectionId) {
+        // 获取所有内容区域
+        var sections = document.querySelectorAll('.main-content section');
+        // 遍历所有内容区域，移除active类（隐藏所有内容）
+        sections.forEach(function(section) {
+            section.classList.remove('active');
+        });
+        // 获取要显示的目标内容区域
+        var targetSection = document.getElementById(sectionId);
+        // 如果目标区域存在
+        if (targetSection) {
+            // 添加active类，显示该内容区域
+            targetSection.classList.add('active');
+        }
+        // 隐藏下拉菜单
+        dropdownContent.style.display = 'none';
+    }
+
+    // 页面加载后默认显示首页
+    showSection('home');
+
+    // 为移动设备添加触摸支持
+    dropdown.addEventListener('touchstart', function(e) {
+        // 阻止默认行为
+        e.preventDefault();
+        // 切换下拉菜单的显示状态
+        dropdownContent.style.display = dropdownContent.style.display === 'block' ? 'none' : 'block';
+    });
+</script>
+
+</body>
+</html>
+
+
